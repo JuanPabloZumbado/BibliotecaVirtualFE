@@ -60,8 +60,28 @@
     <div id="tab-catalogo" class="tab-panel">
       <div class="toolbar">
         <h2>Catálogo</h2>
+        <span class="muted" id="catalogo-total"></span>
       </div>
-      <div id="catalogo-contenido" class="empty">El catálogo de libros se agrega en la siguiente etapa.</div>
+      <form id="filtros" class="filtros card" onsubmit="return false">
+        <div class="filtro-busqueda">
+          <label for="f-texto">Buscar</label>
+          <input id="f-texto" type="search" placeholder="Título o autor" autocomplete="off">
+        </div>
+        <div>
+          <label for="f-genero">Género</label>
+          <select id="f-genero"><option value="">Todos</option></select>
+        </div>
+        <div>
+          <label for="f-autor">Autor</label>
+          <select id="f-autor"><option value="">Todos</option></select>
+        </div>
+        <div>
+          <label for="f-saga">Saga</label>
+          <select id="f-saga"><option value="">Todas</option></select>
+        </div>
+        <button type="button" id="f-limpiar" class="btn ghost">Limpiar</button>
+      </form>
+      <div id="catalogo-lista" class="shelf"></div>
     </div>
 
     <!-- Sagas -->
@@ -69,7 +89,7 @@
       <div class="toolbar">
         <h2>Sagas</h2>
       </div>
-      <div id="sagas-contenido" class="empty">Las sagas se agregan en la siguiente etapa.</div>
+      <div id="sagas-lista" class="sagas-grid"></div>
     </div>
 
     <!-- Mis lecturas -->
@@ -114,7 +134,39 @@
   </form>
 </dialog>
 
-<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<!-- Diálogo: detalle de libro -->
+<dialog id="libro-dialog" class="dialog-amplio">
+  <div class="dialog-cerrar"><button type="button" class="btn link" data-close aria-label="Cerrar">✕</button></div>
+  <div id="libro-detalle"></div>
+</dialog>
+
+<!-- Diálogo: detalle de saga -->
+<dialog id="saga-dialog" class="dialog-amplio">
+  <div class="dialog-cerrar"><button type="button" class="btn link" data-close aria-label="Cerrar">✕</button></div>
+  <div id="saga-detalle"></div>
+</dialog>
+
+<!-- Diálogo: iniciar lectura de una edición -->
+<dialog id="iniciar-dialog">
+  <form id="iniciar-form" method="dialog">
+    <h3>Iniciar lectura</h3>
+    <p class="muted small" id="iniciar-edicion"></p>
+    <label for="il-formato">Formato</label>
+    <select id="il-formato" required></select>
+    <label for="il-estado">Estado</label>
+    <select id="il-estado">
+      <option value="en curso">En curso (empiezo hoy)</option>
+      <option value="por iniciar">Por iniciar</option>
+    </select>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close>Cancelar</button>
+      <button type="submit" class="btn secondary">Iniciar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- popover: así el aviso se ve encima de los diálogos abiertos -->
+<div id="toast" class="toast" popover="manual" role="status" aria-live="polite"></div>
 
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
