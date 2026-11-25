@@ -30,8 +30,11 @@
     const t = $('toast');
     t.textContent = msg;
     t.className = 'toast' + (isError ? ' error' : '');
+    // Se vuelve a mostrar para que quede encima del último diálogo abierto
+    if (t.matches(':popover-open')) t.hidePopover();
+    t.showPopover();
     clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => t.classList.add('hidden'), 3500);
+    toast.timer = setTimeout(() => t.hidePopover(), 3500);
   }
 
   // Ejecuta una acción asíncrona y muestra el error del backend si falla
@@ -93,6 +96,259 @@
     if (vistas[nombre]) guard(vistas[nombre]);
   }
   document.querySelectorAll('.tab').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+
+  // ---------- Utilidades del catálogo ----------
+  const PRIORIDADES = ['Alta', 'Media', 'Baja'];
+  const estrellas = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+  const anno = (fecha) => (fecha ? fecha.slice(0, 4) : '-');
+  // Clase de color del lomo: según el género (1 a 7) o, si no hay, según una posición
+  const lomo = (id) => 'lomo-' + (((id || 1) - 1) % 7 + 1);
+  const nombresAutores = (autores = []) => autores.map((a) => a.nombre).join(', ') || 'Autor desconocido';
+
+  function vacio(texto) {
+    return el('div', { class: 'empty' }, texto);
+  }
+
+  function chipsGeneros(generos = []) {
+    return el('div', { class: 'chips' },
+      generos.map((g) => el('span', { class: 'chip ' + lomo(g.idGenero) }, g.clasificacion)));
+  }
+
+  // Datos de referencia que no cambian: se cargan una sola vez
+  const ref = { generos: [], autores: [], sagas: [], formatos: [], cargado: false };
+
+  async function cargarReferencias() {
+    if (ref.cargado) return;
+    [ref.generos, ref.autores, ref.sagas, ref.formatos] = await Promise.all([
+      Api.generos.list(), Api.autores.list(), Api.sagas.list(), Api.formatos.list(),
+    ]);
+    const llenar = (select, items, valor, texto) =>
+      items.forEach((i) => select.append(el('option', { value: i[valor] }, i[texto])));
+    llenar($('f-genero'), ref.generos, 'idGenero', 'clasificacion');
+    llenar($('f-autor'), ref.autores, 'idAutor', 'nombre');
+    llenar($('f-saga'), ref.sagas, 'idSaga', 'nombre');
+    llenar($('il-formato'), ref.formatos, 'idFormato', 'tipoFormato');
+    ref.cargado = true;
+  }
+
+  // ---------- Catálogo ----------
+  vistas.catalogo = async () => {
+    await cargarReferencias();
+    await buscarLibros();
+  };
+
+  async function buscarLibros() {
+    const libros = await Api.libros.list({
+      q: $('f-texto').value.trim(),
+      genero: $('f-genero').value,
+      autor: $('f-autor').value,
+      saga: $('f-saga').value,
+    });
+    $('catalogo-total').textContent = libros.length === 1 ? '1 libro' : `${libros.length} libros`;
+    const lista = $('catalogo-lista');
+    lista.textContent = '';
+    if (!libros.length) {
+      lista.append(vacio('No hay libros que coincidan con la búsqueda.'));
+      return;
+    }
+    libros.forEach((libro) => lista.append(el('div', { class: 'slot' }, tarjetaLibro(libro))));
+  }
+
+  function tarjetaLibro(libro) {
+    const genero = libro.generos && libro.generos[0];
+    return el('article', { class: 'book ' + lomo(genero && genero.idGenero) },
+      chipsGeneros(libro.generos),
+      el('h4', {}, libro.titulo),
+      el('span', { class: 'autores' }, nombresAutores(libro.autores)),
+      libro.nombreSaga && el('span', { class: 'saga-tag' }, `${libro.nombreSaga} · #${libro.ordenSaga}`),
+      el('div', { class: 'acciones' },
+        el('button', { class: 'btn primary small', onclick: () => guard(() => abrirLibro(libro.idLibro)) }, 'Ver detalle')));
+  }
+
+  // Búsqueda mientras se escribe (espera 300 ms después de la última tecla)
+  let esperaBusqueda;
+  $('f-texto').oninput = () => {
+    clearTimeout(esperaBusqueda);
+    esperaBusqueda = setTimeout(() => guard(buscarLibros), 300);
+  };
+  ['f-genero', 'f-autor', 'f-saga'].forEach((id) => ($(id).onchange = () => guard(buscarLibros)));
+  $('f-limpiar').onclick = () => {
+    $('filtros').reset();
+    guard(buscarLibros);
+  };
+
+  // ---------- Detalle de libro ----------
+  async function abrirLibro(idLibro) {
+    const [libro, valoraciones, listaPorLeer] = await Promise.all([
+      Api.libros.get(idLibro),
+      Api.libros.valoraciones(idLibro),
+      Api.porLeer.list(usuario.idUsuario),
+    ]);
+    const enLista = listaPorLeer.find((p) => p.idLibro === idLibro) || null;
+    const genero = libro.generos && libro.generos[0];
+    const cont = $('libro-detalle');
+    cont.textContent = '';
+
+    cont.append(
+      el('div', { class: 'detalle-header ' + lomo(genero && genero.idGenero) },
+        chipsGeneros(libro.generos),
+        el('h3', {}, libro.titulo),
+        libro.nombreSaga && el('p', { class: 'saga-tag', style: 'margin:4px 0 0' },
+          `Libro ${libro.ordenSaga} de la saga `,
+          el('a', { href: '#', onclick: (e) => { e.preventDefault(); guard(() => abrirSaga(libro.idSaga)); } }, libro.nombreSaga))),
+
+      el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Autores'),
+        el('ul', { class: 'lista-simple' },
+          (libro.autores || []).map((a) => el('li', {}, el('strong', {}, a.nombre), ` · ${a.rol} · ${a.nacionalidad}`)))),
+
+      el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Ediciones'),
+        seccionEdiciones(libro)),
+
+      el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Mi lista por leer'),
+        seccionPorLeer(libro, enLista)),
+
+      el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Reseñas de los lectores'),
+        seccionResenas(valoraciones)));
+
+    if (!$('libro-dialog').open) $('libro-dialog').showModal();
+  }
+
+  function seccionEdiciones(libro) {
+    if (!libro.ediciones || !libro.ediciones.length) return el('p', { class: 'muted' }, 'Este libro no tiene ediciones registradas.');
+    return el('div', { class: 'tabla-wrap' },
+      el('table', { class: 'tabla' },
+        el('thead', {}, el('tr', {},
+          ['Tipo', 'Editorial', 'ISBN', 'Páginas', 'Año', ''].map((t) => el('th', {}, t)))),
+        el('tbody', {}, libro.ediciones.map((ed) => el('tr', {},
+          el('td', {}, ed.tipo),
+          el('td', {}, ed.editorial),
+          el('td', { class: 'small' }, ed.isbn),
+          el('td', {}, String(ed.totPaginas)),
+          el('td', {}, anno(ed.annoPublicacion)),
+          el('td', {}, el('button', { class: 'btn secondary small', onclick: () => abrirIniciar(libro, ed) }, 'Leer')))))));
+  }
+
+  function seccionPorLeer(libro, enLista) {
+    if (enLista) {
+      return el('p', {}, 'Está en su lista con prioridad ',
+        el('span', { class: 'pill ' + enLista.prioridad.toLowerCase() }, enLista.prioridad),
+        el('span', { class: 'muted small' }, ` · agregado el ${fmtFecha(enLista.fechaAgregado)}`));
+    }
+    const select = el('select', { 'aria-label': 'Prioridad' },
+      PRIORIDADES.map((p) => el('option', { value: p, selected: p === 'Media' ? 'selected' : null }, p)));
+    return el('div', { class: 'por-leer-form' },
+      el('span', {}, 'Prioridad:'), select,
+      el('button', {
+        class: 'btn gold small',
+        onclick: () => guard(async () => {
+          await Api.porLeer.add(usuario.idUsuario, { idLibro: libro.idLibro, prioridad: select.value });
+          toast(`"${libro.titulo}" se agregó a su lista por leer`);
+          await abrirLibro(libro.idLibro);
+        }),
+      }, 'Agregar a por leer'));
+  }
+
+  function seccionResenas(valoraciones) {
+    if (!valoraciones.length) return el('p', { class: 'muted' }, 'Este libro todavía no tiene reseñas.');
+    const promedio = valoraciones.reduce((s, v) => s + v.puntuacion, 0) / valoraciones.length;
+    return el('div', {},
+      el('p', { style: 'margin:0' },
+        el('span', { class: 'estrellas' }, estrellas(Math.round(promedio))),
+        ` ${promedio.toFixed(1)} de 5 · ${valoraciones.length} ${valoraciones.length === 1 ? 'reseña' : 'reseñas'}`),
+      valoraciones.map((v) => el('div', { class: 'resena' },
+        el('span', { class: 'estrellas' }, estrellas(v.puntuacion)),
+        el('span', { class: 'quien' }, ` ${v.nombreUsuario} · ${fmtFecha(v.fecha)}`),
+        el('p', {}, v.resenna))));
+  }
+
+  // ---------- Iniciar lectura de una edición ----------
+  let edicionAIniciar = null;
+
+  function abrirIniciar(libro, edicion) {
+    edicionAIniciar = { libro, edicion };
+    $('iniciar-edicion').textContent =
+      `${libro.titulo} · ${edicion.tipo}, ${edicion.editorial} (${edicion.totPaginas} páginas)`;
+    $('iniciar-form').reset();
+    $('iniciar-dialog').showModal();
+  }
+
+  $('iniciar-form').onsubmit = (e) => {
+    e.preventDefault();
+    guard(async () => {
+      const { libro, edicion } = edicionAIniciar;
+      await Api.lecturas.create(usuario.idUsuario, {
+        idEdicion: edicion.idEdicion,
+        idFormato: Number($('il-formato').value),
+        estado: $('il-estado').value,
+      });
+      $('iniciar-dialog').close();
+      $('libro-dialog').close();
+      toast(`Lectura de "${libro.titulo}" iniciada. Puede verla en Mis lecturas.`);
+    });
+  };
+
+  // ---------- Sagas ----------
+  vistas.sagas = async () => {
+    const sagas = await Api.sagas.list();
+    // Se pide el detalle de cada saga para mostrar sus libros en el estante
+    const detalles = await Promise.all(sagas.map((s) => Api.sagas.get(s.idSaga)));
+    const lista = $('sagas-lista');
+    lista.textContent = '';
+    if (!detalles.length) {
+      lista.append(vacio('No hay sagas registradas.'));
+      return;
+    }
+    detalles.forEach((saga) => lista.append(tarjetaSaga(saga)));
+  };
+
+  function tarjetaSaga(saga) {
+    const libros = saga.libros || [];
+    return el('article', { class: 'saga-card' },
+      el('h3', {}, saga.nombre),
+      el('span', { class: 'muted small' },
+        `${libros.length} ${libros.length === 1 ? 'libro' : 'libros'} · ${nombresAutores(saga.autores)}`),
+      chipsGeneros(saga.generos),
+      el('div', { class: 'lomos', 'aria-hidden': 'true' },
+        libros.map((l, i) => el('span', {
+          class: 'lomo ' + lomo(i + 1),
+          style: `height:${48 + (i % 3) * 8}px`,
+          title: l.titulo,
+        }, String(l.ordenSaga)))),
+      el('p', { class: 'small' }, saga.descripcion),
+      el('button', { class: 'btn primary small', onclick: () => guard(() => abrirSaga(saga.idSaga)) }, 'Ver saga'));
+  }
+
+  async function abrirSaga(idSaga) {
+    const saga = await Api.sagas.get(idSaga);
+    const cont = $('saga-detalle');
+    cont.textContent = '';
+    cont.append(
+      el('div', { class: 'detalle-header' },
+        el('h3', {}, saga.nombre),
+        chipsGeneros(saga.generos)),
+      el('p', {}, saga.descripcion),
+      el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Autores'),
+        el('p', { style: 'margin:0' }, nombresAutores(saga.autores))),
+      el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Orden de lectura'),
+        el('ul', { class: 'saga-libros' },
+          (saga.libros || []).map((l) => el('li', {},
+            el('span', { class: 'num' }, String(l.ordenSaga)),
+            el('span', { style: 'flex:1' }, l.titulo),
+            el('button', {
+              class: 'btn ghost small',
+              onclick: () => guard(async () => {
+                $('saga-dialog').close();
+                await abrirLibro(l.idLibro);
+              }),
+            }, 'Ver libro'))))));
+    if (!$('saga-dialog').open) $('saga-dialog').showModal();
+  }
 
   // ---------- Perfil ----------
   $('perfil-btn').onclick = () => {

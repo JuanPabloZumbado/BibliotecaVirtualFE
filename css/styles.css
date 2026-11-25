@@ -210,15 +210,29 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px; }
 }
 
 /* ---------- Libros y estante (usados en las siguientes etapas) ---------- */
+/* Estante: cada libro va en una "casilla" con una tabla de madera debajo.
+   Sin espacio horizontal entre casillas, las tablas se unen y forman un estante por fila. */
 .shelf {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  padding-bottom: 14px;
-  margin-bottom: 26px;
-  border-bottom: 12px solid var(--madera);
-  box-shadow: 0 4px 0 var(--madera-borde);
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  column-gap: 0;
+  row-gap: 28px;
 }
+.shelf > .slot {
+  position: relative;
+  padding: 0 9px 30px;
+  display: flex;
+}
+.shelf > .slot::after {
+  /* tabla de madera; se traslapa 1px con la vecina para que no se vean uniones */
+  content: "";
+  position: absolute;
+  left: -1px; right: -1px; bottom: 0;
+  height: 16px;
+  background: linear-gradient(var(--madera) 0 12px, var(--madera-borde) 12px);
+}
+.shelf > .slot > .book { flex: 1; }
+.shelf > .empty { grid-column: 1 / -1; }
 .book {
   position: relative;
   background: var(--papel);
@@ -278,6 +292,103 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px; }
 
 .estrellas { color: #C9922E; letter-spacing: 2px; }
 
+.book .autores { font-size: .88rem; color: var(--madera-oscura); }
+.book .saga-tag { font-size: .78rem; color: var(--borgona); font-weight: 700; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.chip {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lomo, var(--madera)) 16%, #fff);
+  color: var(--lomo, var(--madera));
+  border: 1px solid color-mix(in srgb, var(--lomo, var(--madera)) 35%, #fff);
+}
+
+/* ---------- Filtros del catálogo ---------- */
+.filtros {
+  display: grid;
+  grid-template-columns: 2fr repeat(3, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 28px;
+}
+.filtros label { margin-top: 0; }
+
+/* ---------- Sagas ---------- */
+.sagas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+.saga-card {
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-top: 6px solid var(--borgona);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--sombra);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.saga-card:nth-child(3n+2) { border-top-color: var(--verde); }
+.saga-card:nth-child(3n+3) { border-top-color: var(--azul-tinta); }
+.saga-card p { margin: 0; }
+.saga-card .btn { align-self: flex-start; margin-top: auto; }
+
+/* Lomos de los libros de una saga, en orden */
+.lomos { display: flex; align-items: flex-end; gap: 4px; padding: 0 6px; border-bottom: 8px solid var(--madera); min-height: 70px; }
+.lomo {
+  width: 26px;
+  border-radius: 3px 3px 0 0;
+  background: var(--lomo, var(--borgona));
+  color: var(--dorado-claro);
+  font-size: .75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6px;
+}
+
+/* ---------- Detalle (libro y saga) ---------- */
+.dialog-amplio { width: min(760px, 94vw); max-height: 90vh; padding-top: 10px; }
+.dialog-cerrar { display: flex; justify-content: flex-end; }
+.dialog-cerrar .btn { font-size: 1.1rem; color: var(--tinta-suave); }
+.detalle-header { border-left: 12px solid var(--lomo, var(--borgona)); padding: 4px 0 4px 14px; margin-bottom: 14px; }
+.detalle-header h3 { font-size: 1.6rem; }
+.detalle-seccion { margin-top: 20px; }
+.detalle-seccion > h4 {
+  margin: 0 0 8px;
+  font-family: var(--font-titulo);
+  font-size: 1.1rem;
+  color: var(--madera-oscura);
+  border-bottom: 2px solid var(--dorado);
+  padding-bottom: 4px;
+}
+.lista-simple { margin: 0; padding-left: 18px; }
+.lista-simple li { margin: 2px 0; }
+
+.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tabla th { text-align: left; color: var(--madera); font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; border-bottom: 1px solid var(--borde); }
+.tabla td { padding: 8px; border-bottom: 1px solid var(--linea); vertical-align: middle; }
+.tabla-wrap { overflow-x: auto; }
+
+.por-leer-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.por-leer-form select { width: auto; }
+
+.resena { border-left: 3px solid var(--dorado); padding: 6px 12px; margin: 10px 0; background: #FBF4E4; border-radius: 0 var(--radius) var(--radius) 0; }
+.resena p { margin: 4px 0 0; }
+.resena .quien { font-size: .8rem; color: var(--tinta-suave); }
+
+.saga-libros { list-style: none; margin: 0; padding: 0; }
+.saga-libros li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--linea); }
+.saga-libros .num {
+  width: 28px; height: 28px; flex: none;
+  border-radius: 50%;
+  background: var(--dorado);
+  color: var(--madera-oscura);
+  font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
 /* ---------- Diálogos ---------- */
 dialog {
   border: 1px solid var(--borde);
@@ -295,7 +406,9 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;
-  bottom: 24px; right: 24px;
+  inset: auto 24px 24px auto;
+  margin: 0;
+  border: 0;
   background: var(--verde);
   color: #fff;
   padding: 12px 18px;
@@ -308,6 +421,10 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top
 .toast.error { background: var(--terracota); }
 
 /* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .filtros { grid-template-columns: 1fr 1fr; }
+  .filtros .filtro-busqueda { grid-column: 1 / -1; }
+}
 @media (max-width: 760px) {
   .topbar { padding: 10px 16px 0; gap: 8px; }
   .tabs { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
@@ -316,5 +433,7 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top
   .session { padding-bottom: 6px; }
   #session-nombre { display: none; }
   main { padding: 16px; }
-  .toast { left: 16px; right: 16px; bottom: 16px; }
+  .toast { inset: auto 16px 16px 16px; max-width: none; }
+  .filtros { grid-template-columns: 1fr; }
+  .detalle-header h3 { font-size: 1.3rem; }
 }
