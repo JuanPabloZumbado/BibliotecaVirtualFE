@@ -28,7 +28,9 @@ Si el backend corre en otra dirección, cambie `BASE_URL` en `js/api.js`.
 ## Funcionalidades
 - **Inicio de sesión** con el correo del lector (sin contraseña). La sesión se guarda en `sessionStorage` y se mantiene al recargar la página.
 - **Perfil:** editar el nombre y el correo.
-- **Pestañas:** Catálogo, Sagas, Mis lecturas, Por leer y Estadísticas.
+- **Catálogo:** los libros se muestran como un estante. Se puede buscar por título o autor (sin importar acentos) y filtrar por género, autor y saga.
+- **Detalle del libro:** autores con su rol, géneros, saga, ediciones y reseñas de los lectores con su promedio. Desde aquí se puede **iniciar la lectura** de una edición o **agregar el libro a la lista por leer**.
+- **Sagas:** cada saga con sus libros en orden, autores y géneros.
 
 ## Diseño
 Paleta inspirada en una biblioteca antigua, definida con variables CSS en `css/styles.css`:
