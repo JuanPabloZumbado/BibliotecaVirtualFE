@@ -232,6 +232,16 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px; }
   background: linear-gradient(var(--madera) 0 12px, var(--madera-borde) 12px);
 }
 .shelf > .slot > .book { flex: 1; }
+/* La última fila puede quedar incompleta: esta tabla de ancho completo cierra el estante.
+   Las casillas se estiran a la altura de su fila, así que coincide con las tablas de la última fila. */
+.shelf { position: relative; }
+.shelf:has(> .slot)::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 16px;
+  background: linear-gradient(var(--madera) 0 12px, var(--madera-borde) 12px);
+}
 .shelf > .empty { grid-column: 1 / -1; }
 .book {
   position: relative;
@@ -389,6 +399,28 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px; }
   display: inline-flex; align-items: center; justify-content: center;
 }
 
+/* ---------- Mis lecturas ---------- */
+/* El lomo de cada lectura toma el color de su estado */
+.estado-por-iniciar { --lomo: var(--azul-tinta); }
+.estado-en-curso { --lomo: var(--dorado); }
+.estado-terminada { --lomo: var(--verde); }
+.estado-abandonada { --lomo: var(--terracota); }
+.book .fechas { font-size: .78rem; color: var(--tinta-suave); }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 4px 0 6px;
+}
+.info-grid > div { background: #FBF4E4; border: 1px solid var(--linea); border-radius: var(--radius); padding: 8px 12px; }
+.info-grid .dato { display: block; font-weight: 700; font-size: 1.05rem; color: var(--madera-oscura); }
+.info-grid .etiqueta { font-size: .75rem; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .05em; }
+
+.acciones-detalle { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.acciones-detalle select { width: auto; }
+.campos-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+
 /* ---------- Diálogos ---------- */
 dialog {
   border: 1px solid var(--borde);
@@ -435,5 +467,6 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top
   main { padding: 16px; }
   .toast { inset: auto 16px 16px 16px; max-width: none; }
   .filtros { grid-template-columns: 1fr; }
+  .campos-2 { grid-template-columns: 1fr; }
   .detalle-header h3 { font-size: 1.3rem; }
 }

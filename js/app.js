@@ -350,6 +350,229 @@
     if (!$('saga-dialog').open) $('saga-dialog').showModal();
   }
 
+  // ---------- Mis lecturas ----------
+  const ESTADOS = ['por iniciar', 'en curso', 'terminada', 'abandonada'];
+  const ETIQUETA_ESTADO = {
+    'por iniciar': 'Por iniciar', 'en curso': 'En curso', terminada: 'Terminada', abandonada: 'Abandonada',
+  };
+  const claseEstado = (estado) => estado.replace(' ', '-');   // "en curso" -> "en-curso"
+  const estaActiva = (l) => l.estado === 'por iniciar' || l.estado === 'en curso';
+  const porcentaje = (l) => (l.totPaginas ? Math.min(100, Math.round((l.paginaActual * 100) / l.totPaginas)) : 0);
+  const pillEstado = (estado) => el('span', { class: 'pill ' + claseEstado(estado) }, ETIQUETA_ESTADO[estado] || estado);
+  const fmtMinutos = (m) => {
+    if (m < 60) return `${m} min`;
+    const horas = Math.floor(m / 60);
+    return m % 60 ? `${horas} h ${m % 60} min` : `${horas} h`;
+  };
+  const rangoFechas = (l) => (l.fechaFin
+    ? `${fmtFecha(l.fechaInicio)} – ${fmtFecha(l.fechaFin)}`
+    : `Desde ${fmtFecha(l.fechaInicio)}`);
+  const barraProgreso = (l) => el('div', { class: 'progreso ' + claseEstado(l.estado) },
+    el('span', { style: `width:${porcentaje(l)}%` }));
+
+  vistas.lecturas = async () => {
+    await cargarReferencias();   // los formatos se usan en el detalle
+    await cargarLecturas();
+  };
+
+  async function cargarLecturas() {
+    const filtro = $('lecturas-filtro').value;
+    // Todas las lecturas para los contadores y, si hay filtro, la lista filtrada por el backend (?estado=)
+    const [todas, filtradas] = await Promise.all([
+      Api.lecturas.list(usuario.idUsuario),
+      filtro ? Api.lecturas.list(usuario.idUsuario, filtro) : null,
+    ]);
+
+    const contadores = $('lecturas-contadores');
+    contadores.textContent = '';
+    ESTADOS.forEach((estado) => {
+      const n = todas.filter((l) => l.estado === estado).length;
+      if (n) contadores.append(el('span', { class: 'pill ' + claseEstado(estado) }, `${ETIQUETA_ESTADO[estado]}: ${n}`));
+    });
+
+    const lecturas = filtradas || todas;
+    const lista = $('lecturas-lista');
+    lista.textContent = '';
+    if (!lecturas.length) {
+      lista.append(vacio(filtro
+        ? 'No tiene lecturas en este estado.'
+        : 'Todavía no tiene lecturas. Busque un libro en el catálogo y presione "Leer".'));
+      return;
+    }
+    lecturas.forEach((l) => lista.append(el('div', { class: 'slot' }, tarjetaLectura(l))));
+  }
+
+  function tarjetaLectura(l) {
+    return el('article', { class: `book estado-${claseEstado(l.estado)}` + (l.estado === 'en curso' ? ' marcado' : '') },
+      pillEstado(l.estado),
+      el('h4', {}, l.titulo),
+      el('span', { class: 'meta' }, `${l.tipoEdicion} · ${l.editorial} · ${l.tipoFormato}`),
+      barraProgreso(l),
+      el('span', { class: 'meta' }, `Pág. ${l.paginaActual} de ${l.totPaginas} (${porcentaje(l)}%) · ${fmtMinutos(l.minutosLeidos)}`),
+      el('span', { class: 'fechas' }, rangoFechas(l)),
+      el('div', { class: 'acciones' },
+        estaActiva(l) && el('button', { class: 'btn primary small', onclick: () => abrirSesion(l) }, 'Registrar sesión'),
+        el('button', { class: 'btn ghost small', onclick: () => guard(() => abrirLectura(l.idLectura)) }, 'Detalle')));
+  }
+
+  $('lecturas-filtro').onchange = () => guard(cargarLecturas);
+  $('lecturas-nueva').onclick = () => showTab('catalogo');
+
+  // ---------- Detalle de lectura ----------
+  async function abrirLectura(idLectura) {
+    const l = await Api.lecturas.get(usuario.idUsuario, idLectura);
+    const sesiones = l.sesiones || [];
+    const cont = $('lectura-detalle');
+    cont.textContent = '';
+
+    const dato = (etiqueta, valor) => el('div', {}, el('span', { class: 'etiqueta' }, etiqueta), el('span', { class: 'dato' }, valor));
+
+    cont.append(
+      el('div', { class: 'detalle-header estado-' + claseEstado(l.estado) },
+        pillEstado(l.estado),
+        el('h3', {}, l.titulo),
+        el('p', { class: 'muted', style: 'margin:2px 0 0' }, `${l.tipoEdicion} · ${l.editorial} · ${l.tipoFormato} · ${rangoFechas(l)}`)),
+
+      el('div', { class: 'info-grid' },
+        dato('Progreso', `${porcentaje(l)}%`),
+        dato('Página actual', `${l.paginaActual} de ${l.totPaginas}`),
+        dato('Páginas leídas', String(l.paginasLeidas)),
+        dato('Tiempo de lectura', fmtMinutos(l.minutosLeidos)),
+        dato('Sesiones', String(sesiones.length))),
+      barraProgreso(l),
+
+      el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Acciones'),
+        accionesLectura(l)),
+
+      el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Sesiones de lectura'),
+        tablaSesiones(l, sesiones)));
+
+    if (!$('lectura-dialog').open) $('lectura-dialog').showModal();
+  }
+
+  function accionesLectura(l) {
+    const formato = el('select', {
+      'aria-label': 'Formato',
+      onchange: (e) => cambiarLectura(l, { idFormato: Number(e.target.value) }, 'Formato actualizado'),
+    }, ref.formatos.map((f) => el('option', {
+      value: f.idFormato, selected: f.idFormato === l.idFormato ? 'selected' : null,
+    }, f.tipoFormato)));
+
+    return el('div', { class: 'acciones-detalle' },
+      estaActiva(l) && el('button', { class: 'btn primary small', onclick: () => abrirSesion(l) }, 'Registrar sesión'),
+      estaActiva(l) && el('button', {
+        class: 'btn secondary small',
+        onclick: () => cambiarLectura(l, { estado: 'terminada' }, 'Lectura terminada'),
+      }, 'Marcar como terminada'),
+      estaActiva(l) && el('button', {
+        class: 'btn danger small',
+        onclick: () => cambiarLectura(l, { estado: 'abandonada' }, 'Lectura abandonada'),
+      }, 'Abandonar'),
+      !estaActiva(l) && el('button', {
+        class: 'btn secondary small',
+        onclick: () => cambiarLectura(l, { estado: 'en curso' }, 'La lectura volvió a estar en curso'),
+      }, 'Retomar lectura'),
+      el('span', { class: 'small muted', style: 'margin-left:8px' }, 'Formato:'), formato,
+      el('span', { class: 'spacer', style: 'flex:1' }),
+      el('button', { class: 'btn danger small', onclick: () => eliminarLectura(l) }, 'Eliminar lectura'));
+  }
+
+  function tablaSesiones(l, sesiones) {
+    if (!sesiones.length) return el('p', { class: 'muted' }, 'Aún no hay sesiones registradas.');
+    return el('div', { class: 'tabla-wrap' },
+      el('table', { class: 'tabla' },
+        el('thead', {}, el('tr', {},
+          ['#', 'Páginas', 'Leídas', 'Tiempo', 'Capítulo', ''].map((t) => el('th', {}, t)))),
+        el('tbody', {}, sesiones.map((s, i) => el('tr', {},
+          el('td', {}, String(i + 1)),
+          el('td', {}, `${s.pagInicio} – ${s.pagFin}`),
+          el('td', {}, String(s.pagLeidas)),
+          el('td', {}, fmtMinutos(s.duracion)),
+          el('td', {}, String(s.capActual)),
+          el('td', {}, el('button', {
+            class: 'btn danger small',
+            title: 'Eliminar sesión',
+            onclick: () => eliminarSesion(l, s, i + 1),
+          }, 'Eliminar')))))));
+  }
+
+  // Actualiza la lectura (estado o formato) y refresca el detalle y la lista
+  function cambiarLectura(l, cambios, mensaje) {
+    return guard(async () => {
+      await Api.lecturas.update(usuario.idUsuario, l.idLectura, cambios);
+      toast(mensaje);
+      await refrescarLectura(l.idLectura);
+    });
+  }
+
+  async function refrescarLectura(idLectura) {
+    await cargarLecturas();
+    if ($('lectura-dialog').open) await abrirLectura(idLectura);
+  }
+
+  function eliminarLectura(l) {
+    if (!confirm(`¿Eliminar la lectura de "${l.titulo}"? También se borrarán sus sesiones y su valoración.`)) return;
+    guard(async () => {
+      await Api.lecturas.remove(usuario.idUsuario, l.idLectura);
+      $('lectura-dialog').close();
+      toast('Lectura eliminada');
+      await cargarLecturas();
+    });
+  }
+
+  function eliminarSesion(l, sesion, numero) {
+    if (!confirm(`¿Eliminar la sesión #${numero} (páginas ${sesion.pagInicio} a ${sesion.pagFin})?`)) return;
+    guard(async () => {
+      await Api.sesiones.remove(l.idLectura, sesion.idSesion);
+      toast('Sesión eliminada');
+      await refrescarLectura(l.idLectura);
+    });
+  }
+
+  // ---------- Registrar sesión ----------
+  let lecturaSesion = null;
+
+  function abrirSesion(l) {
+    lecturaSesion = l;
+    $('sesion-form').reset();
+    $('sesion-libro').textContent = `${l.titulo} · ${l.totPaginas} páginas`;
+    // La sesión continúa donde quedó la anterior
+    $('sf-inicio').value = l.paginaActual;
+    $('sf-inicio').max = l.totPaginas;
+    $('sf-fin').min = l.paginaActual;
+    $('sf-fin').max = l.totPaginas;
+    $('sesion-ayuda').textContent = `Va en la página ${l.paginaActual} de ${l.totPaginas}.`;
+    $('sesion-dialog').showModal();
+  }
+
+  // Si se cambia la página inicial, la final no puede ser menor
+  $('sf-inicio').oninput = () => { $('sf-fin').min = $('sf-inicio').value || 0; };
+
+  $('sesion-form').onsubmit = (e) => {
+    e.preventDefault();
+    guard(async () => {
+      const l = lecturaSesion;
+      const datos = {
+        pagInicio: Number($('sf-inicio').value),
+        pagFin: Number($('sf-fin').value),
+        duracion: Number($('sf-duracion').value),
+        capActual: Number($('sf-capitulo').value),
+      };
+      await Api.sesiones.create(l.idLectura, datos);
+      $('sesion-dialog').close();
+      toast(`Sesión registrada: ${datos.pagFin - datos.pagInicio} páginas en ${fmtMinutos(datos.duracion)}`);
+
+      if (datos.pagFin >= l.totPaginas
+          && confirm(`Llegó a la última página de "${l.titulo}". ¿Desea marcar la lectura como terminada?`)) {
+        await Api.lecturas.update(usuario.idUsuario, l.idLectura, { estado: 'terminada' });
+        toast(`¡Felicidades! Terminó "${l.titulo}"`);
+      }
+      await refrescarLectura(l.idLectura);
+    });
+  };
+
   // ---------- Perfil ----------
   $('perfil-btn').onclick = () => {
     $('pf-nombre').value = usuario.nombre;
