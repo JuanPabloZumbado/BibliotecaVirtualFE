@@ -31,6 +31,9 @@ Si el backend corre en otra dirección, cambie `BASE_URL` en `js/api.js`.
 - **Catálogo:** los libros se muestran como un estante. Se puede buscar por título o autor (sin importar acentos) y filtrar por género, autor y saga.
 - **Detalle del libro:** autores con su rol, géneros, saga, ediciones y reseñas de los lectores con su promedio. Desde aquí se puede **iniciar la lectura** de una edición o **agregar el libro a la lista por leer**.
 - **Sagas:** cada saga con sus libros en orden, autores y géneros.
+- **Mis lecturas:** tarjetas con el progreso de cada lectura (página actual, porcentaje y tiempo leído), contadores por estado y filtro por estado.
+- **Detalle de la lectura:** historial de sesiones, marcar como terminada, abandonar, retomar, cambiar el formato y eliminar la lectura.
+- **Registrar sesión:** la página inicial se completa con la última página leída. Al llegar a la última página, ofrece marcar la lectura como terminada.
 
 ## Diseño
 Paleta inspirada en una biblioteca antigua, definida con variables CSS en `css/styles.css`:
