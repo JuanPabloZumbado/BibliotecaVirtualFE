@@ -34,6 +34,9 @@ Si el backend corre en otra dirección, cambie `BASE_URL` en `js/api.js`.
 - **Mis lecturas:** tarjetas con el progreso de cada lectura (página actual, porcentaje y tiempo leído), contadores por estado y filtro por estado.
 - **Detalle de la lectura:** historial de sesiones, marcar como terminada, abandonar, retomar, cambiar el formato y eliminar la lectura.
 - **Registrar sesión:** la página inicial se completa con la última página leída. Al llegar a la última página, ofrece marcar la lectura como terminada.
+- **Valoraciones:** en el detalle de una lectura terminada o abandonada se puede valorar el libro con estrellas (1 a 5) y una reseña de hasta 2000 caracteres. La valoración se puede editar o eliminar.
+- **Por leer:** lista de libros pendientes ordenada por prioridad (Alta, Media, Baja), con contadores y filtro por prioridad. Se puede cambiar la prioridad, quitar un libro o **empezar a leerlo**: al iniciar la lectura, el libro sale de la lista automáticamente.
+- **Estadísticas:** resumen del lector (lecturas, libros terminados, páginas leídas, tiempo de lectura, páginas por hora, promedio de sus reseñas y libros por leer) y gráficos de barras de lecturas por estado, géneros y autores más leídos y formatos usados.
 
 ## Diseño
 Paleta inspirada en una biblioteca antigua, definida con variables CSS en `css/styles.css`:
