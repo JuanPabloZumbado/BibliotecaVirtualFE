@@ -96,8 +96,20 @@
     <div id="tab-lecturas" class="tab-panel hidden">
       <div class="toolbar">
         <h2>Mis lecturas</h2>
+        <div id="lecturas-contadores" class="chips"></div>
+        <span class="spacer"></span>
+        <label class="inline">Estado:
+          <select id="lecturas-filtro">
+            <option value="">Todas</option>
+            <option value="por iniciar">Por iniciar</option>
+            <option value="en curso">En curso</option>
+            <option value="terminada">Terminadas</option>
+            <option value="abandonada">Abandonadas</option>
+          </select>
+        </label>
+        <button id="lecturas-nueva" class="btn secondary">Buscar un libro</button>
       </div>
-      <div id="lecturas-contenido" class="empty">Sus lecturas y sesiones se agregan en una próxima etapa.</div>
+      <div id="lecturas-lista" class="shelf"></div>
     </div>
 
     <!-- Por leer -->
@@ -161,6 +173,43 @@
     <div class="actions">
       <button type="button" class="btn ghost" data-close>Cancelar</button>
       <button type="submit" class="btn secondary">Iniciar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diálogo: detalle de lectura -->
+<dialog id="lectura-dialog" class="dialog-amplio">
+  <div class="dialog-cerrar"><button type="button" class="btn link" data-close aria-label="Cerrar">✕</button></div>
+  <div id="lectura-detalle"></div>
+</dialog>
+
+<!-- Diálogo: registrar sesión de lectura -->
+<dialog id="sesion-dialog">
+  <form id="sesion-form" method="dialog">
+    <h3>Registrar sesión</h3>
+    <p class="muted small" id="sesion-libro"></p>
+    <div class="campos-2">
+      <div>
+        <label for="sf-inicio">Página inicial</label>
+        <input id="sf-inicio" type="number" min="0" step="1" required>
+      </div>
+      <div>
+        <label for="sf-fin">Página final</label>
+        <input id="sf-fin" type="number" min="0" step="1" required>
+      </div>
+      <div>
+        <label for="sf-duracion">Minutos leídos</label>
+        <input id="sf-duracion" type="number" min="1" step="1" required>
+      </div>
+      <div>
+        <label for="sf-capitulo">Capítulo actual</label>
+        <input id="sf-capitulo" type="number" min="0" step="1" required>
+      </div>
+    </div>
+    <p class="muted small" id="sesion-ayuda"></p>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close>Cancelar</button>
+      <button type="submit" class="btn primary">Guardar sesión</button>
     </div>
   </form>
 </dialog>
