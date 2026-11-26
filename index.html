@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Biblioteca Virtual</title>
+  <link rel="icon" href="img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- LOGIN: ficha del lector -->
+<section id="login-view" class="login-wrap">
+  <div class="ficha">
+    <div class="ficha-header">
+      <img src="img/logo.svg" alt="" class="logo">
+      <span>Biblioteca Virtual</span>
+    </div>
+    <form id="login-form" class="ficha-body">
+      <p class="ficha-label">Ficha del lector</p>
+      <p class="muted small">Ingrese con el correo con el que está registrado.</p>
+      <label for="login-correo">Correo</label>
+      <input id="login-correo" type="email" required autofocus autocomplete="email" placeholder="nombre@correo.cr">
+      <div class="ficha-footer">
+        <span class="sello">Lector · 2026</span>
+        <button type="submit" class="btn primary">Entrar</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- APP -->
+<section id="app-view" class="hidden">
+  <header class="topbar">
+    <div class="brand">
+      <img src="img/logo.svg" alt="" class="logo">
+      <span>Biblioteca Virtual</span>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="catalogo">Catálogo</button>
+      <button class="tab" data-tab="sagas">Sagas</button>
+      <button class="tab" data-tab="lecturas">Mis lecturas</button>
+      <button class="tab" data-tab="porleer">Por leer</button>
+      <button class="tab" data-tab="estadisticas">Estadísticas</button>
+    </nav>
+    <div class="session">
+      <button id="perfil-btn" class="btn link" title="Editar perfil">
+        <span class="avatar" id="session-inicial"></span>
+        <span id="session-nombre"></span>
+      </button>
+      <button id="logout" class="btn ghost-light small">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Catálogo -->
+    <div id="tab-catalogo" class="tab-panel">
+      <div class="toolbar">
+        <h2>Catálogo</h2>
+        <span class="muted" id="catalogo-total"></span>
+        <span class="spacer"></span>
+        <!-- Solo se ve en celular: muestra u oculta los filtros -->
+        <button type="button" id="f-toggle" class="btn ghost small" aria-controls="filtros" aria-expanded="false">Filtros</button>
+      </div>
+      <form id="filtros" class="filtros card" onsubmit="return false">
+        <div class="filtro-busqueda">
+          <label for="f-texto">Buscar</label>
+          <input id="f-texto" type="search" placeholder="Título o autor" autocomplete="off">
+        </div>
+        <div>
+          <label for="f-genero">Género</label>
+          <select id="f-genero"><option value="">Todos</option></select>
+        </div>
+        <div>
+          <label for="f-autor">Autor</label>
+          <select id="f-autor"><option value="">Todos</option></select>
+        </div>
+        <div>
+          <label for="f-saga">Saga</label>
+          <select id="f-saga"><option value="">Todas</option></select>
+        </div>
+        <button type="button" id="f-limpiar" class="btn ghost">Limpiar</button>
+      </form>
+      <div id="catalogo-lista" class="shelf"><p class="cargando-msg">Cargando…</p></div>
+    </div>
+
+    <!-- Sagas -->
+    <div id="tab-sagas" class="tab-panel hidden">
+      <div class="toolbar">
+        <h2>Sagas</h2>
+      </div>
+      <div id="sagas-lista" class="sagas-grid"><p class="cargando-msg">Cargando…</p></div>
+    </div>
+
+    <!-- Mis lecturas -->
+    <div id="tab-lecturas" class="tab-panel hidden">
+      <div class="toolbar">
+        <h2>Mis lecturas</h2>
+        <div id="lecturas-contadores" class="chips"></div>
+        <span class="spacer"></span>
+        <label class="inline">Estado:
+          <select id="lecturas-filtro">
+            <option value="">Todas</option>
+            <option value="por iniciar">Por iniciar</option>
+            <option value="en curso">En curso</option>
+            <option value="terminada">Terminadas</option>
+            <option value="abandonada">Abandonadas</option>
+          </select>
+        </label>
+        <button id="lecturas-nueva" class="btn secondary">Buscar un libro</button>
+      </div>
+      <div id="lecturas-lista" class="shelf"><p class="cargando-msg">Cargando…</p></div>
+    </div>
+
+    <!-- Por leer -->
+    <div id="tab-porleer" class="tab-panel hidden">
+      <div class="toolbar">
+        <h2>Por leer</h2>
+        <div id="porleer-contadores" class="chips"></div>
+        <span class="spacer"></span>
+        <label class="inline">Prioridad:
+          <select id="porleer-filtro">
+            <option value="">Todas</option>
+            <option value="Alta">Alta</option>
+            <option value="Media">Media</option>
+            <option value="Baja">Baja</option>
+          </select>
+        </label>
+        <button id="porleer-nuevo" class="btn secondary">Buscar un libro</button>
+      </div>
+      <div id="porleer-lista" class="shelf"><p class="cargando-msg">Cargando…</p></div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div id="tab-estadisticas" class="tab-panel hidden">
+      <div class="toolbar">
+        <h2>Estadísticas</h2>
+        <span class="muted">Resumen de toda su actividad de lectura</span>
+      </div>
+      <div id="estadisticas-resumen" class="stats-grid"><p class="cargando-msg">Cargando…</p></div>
+      <div id="estadisticas-paneles" class="stats-paneles"></div>
+    </div>
+  </main>
+</section>
+
+<!-- Diálogo: perfil -->
+<dialog id="perfil-dialog">
+  <form id="perfil-form" method="dialog">
+    <h3>Mi perfil</h3>
+    <label for="pf-nombre">Nombre</label>
+    <input id="pf-nombre" required maxlength="255">
+    <label for="pf-correo">Correo</label>
+    <input id="pf-correo" type="email" required maxlength="255">
+    <p class="muted small">Lector desde <span id="pf-fecha"></span></p>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close>Cancelar</button>
+      <button type="submit" class="btn primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diálogo: detalle de libro -->
+<dialog id="libro-dialog" class="dialog-amplio">
+  <div class="dialog-cerrar"><button type="button" class="btn link" data-close aria-label="Cerrar">✕</button></div>
+  <div id="libro-detalle"></div>
+</dialog>
+
+<!-- Diálogo: detalle de saga -->
+<dialog id="saga-dialog" class="dialog-amplio">
+  <div class="dialog-cerrar"><button type="button" class="btn link" data-close aria-label="Cerrar">✕</button></div>
+  <div id="saga-detalle"></div>
+</dialog>
+
+<!-- Diálogo: iniciar lectura de una edición -->
+<dialog id="iniciar-dialog">
+  <form id="iniciar-form" method="dialog">
+    <h3>Iniciar lectura</h3>
+    <p class="muted small" id="iniciar-edicion"></p>
+    <label for="il-formato">Formato</label>
+    <select id="il-formato" required></select>
+    <label for="il-estado">Estado</label>
+    <select id="il-estado">
+      <option value="en curso">En curso (empiezo hoy)</option>
+      <option value="por iniciar">Por iniciar</option>
+    </select>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close>Cancelar</button>
+      <button type="submit" class="btn secondary">Iniciar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diálogo: detalle de lectura -->
+<dialog id="lectura-dialog" class="dialog-amplio">
+  <div class="dialog-cerrar"><button type="button" class="btn link" data-close aria-label="Cerrar">✕</button></div>
+  <div id="lectura-detalle"></div>
+</dialog>
+
+<!-- Diálogo: registrar sesión de lectura -->
+<dialog id="sesion-dialog">
+  <form id="sesion-form" method="dialog">
+    <h3>Registrar sesión</h3>
+    <p class="muted small" id="sesion-libro"></p>
+    <div class="campos-2">
+      <div>
+        <label for="sf-inicio">Página inicial</label>
+        <input id="sf-inicio" type="number" min="0" step="1" required>
+      </div>
+      <div>
+        <label for="sf-fin">Página final</label>
+        <input id="sf-fin" type="number" min="0" step="1" required>
+      </div>
+      <div>
+        <label for="sf-duracion">Minutos leídos</label>
+        <input id="sf-duracion" type="number" min="1" step="1" required>
+      </div>
+      <div>
+        <label for="sf-capitulo">Capítulo actual</label>
+        <input id="sf-capitulo" type="number" min="0" step="1" required>
+      </div>
+    </div>
+    <p class="muted small" id="sesion-ayuda"></p>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close>Cancelar</button>
+      <button type="submit" class="btn primary">Guardar sesión</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diálogo: valorar una lectura (crear o editar) -->
+<dialog id="valoracion-dialog">
+  <form id="valoracion-form" method="dialog">
+    <h3 id="valoracion-titulo">Valorar lectura</h3>
+    <p class="muted small" id="valoracion-libro"></p>
+    <fieldset class="selector-estrellas">
+      <legend>Puntuación</legend>
+      <!-- En orden inverso: con flex row-reverse se ven de 1 a 5 y CSS puede pintar las anteriores -->
+      <input type="radio" name="puntuacion" id="vf-p5" value="5" required><label for="vf-p5" title="5 de 5">★</label>
+      <input type="radio" name="puntuacion" id="vf-p4" value="4"><label for="vf-p4" title="4 de 5">★</label>
+      <input type="radio" name="puntuacion" id="vf-p3" value="3"><label for="vf-p3" title="3 de 5">★</label>
+      <input type="radio" name="puntuacion" id="vf-p2" value="2"><label for="vf-p2" title="2 de 5">★</label>
+      <input type="radio" name="puntuacion" id="vf-p1" value="1"><label for="vf-p1" title="1 de 5">★</label>
+    </fieldset>
+    <label for="vf-resena">Reseña</label>
+    <textarea id="vf-resena" rows="5" maxlength="2000" required placeholder="¿Qué le pareció el libro?"></textarea>
+    <p class="muted small contador" id="vf-contador">0 / 2000</p>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close>Cancelar</button>
+      <button type="submit" class="btn gold">Guardar valoración</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- popover: así el aviso se ve encima de los diálogos abiertos -->
+<div id="toast" class="toast" popover="manual" role="status" aria-live="polite"></div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
