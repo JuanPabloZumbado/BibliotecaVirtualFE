@@ -426,6 +426,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .prioridad-alta { --lomo: var(--terracota); }
 .prioridad-media { --lomo: var(--dorado); }
 .prioridad-baja { --lomo: var(--azul-tinta); }
+.book .acciones .quitar { margin-left: auto; }
 .book label.inline { font-weight: 600; font-size: .8rem; margin-top: 4px; }
 .book label.inline select { padding: 4px 8px; font-size: .85rem; }
 
@@ -466,7 +467,8 @@ textarea { resize: vertical; font: inherit; }
 .acento-dorado { --acento: var(--dorado); }
 .acento-terracota { --acento: var(--terracota); }
 
-.stats-paneles { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+/* Dos columnas en pantallas grandes (los 4 gráficos quedan 2 y 2), una en pantallas pequeñas */
+.stats-paneles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
 .panel-barras h3 { margin: 0; font-family: var(--font-titulo); color: var(--borgona); font-size: 1.15rem; }
 .panel-barras > p { margin: 2px 0 12px; }
 .barras { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -507,7 +509,36 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top
 }
 .toast.error { background: var(--terracota); }
 
+/* ---------- Carga y errores ---------- */
+/* Mientras se cargan los datos de una pestaña, el contenido anterior se atenúa */
+.tab-panel.cargando > :not(.toolbar):not(:has(> .cargando-msg)) { opacity: .5; transition: opacity .15s; pointer-events: none; }
+.tab-panel.cargando { cursor: progress; }
+.cargando-msg {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--tinta-suave);
+  font-style: italic;
+}
+.aviso-error {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  text-align: center;
+  padding: 28px 16px;
+  margin-top: 12px;
+  border: 2px dashed var(--terracota);
+  border-radius: var(--radius);
+  background: var(--estado-abandonada-bg);
+  color: var(--estado-abandonada);
+}
+
+/* El botón "Filtros" solo se usa en celular */
+#f-toggle { display: none; }
+
 /* ---------- Responsive ---------- */
+@media (min-width: 1100px) {
+  .stats-grid { grid-template-columns: repeat(5, 1fr); }
+}
 @media (max-width: 900px) {
   .filtros { grid-template-columns: 1fr 1fr; }
   .filtros .filtro-busqueda { grid-column: 1 / -1; }
@@ -522,6 +553,9 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top
   main { padding: 16px; }
   .toast { inset: auto 16px 16px 16px; max-width: none; }
   .filtros { grid-template-columns: 1fr; }
+  #f-toggle { display: inline-flex; }
+  /* La búsqueda siempre se ve; los demás filtros solo con el botón "Filtros" */
+  .filtros:not(.abierto) > :not(.filtro-busqueda) { display: none; }
   .campos-2 { grid-template-columns: 1fr; }
   .detalle-header h3 { font-size: 1.3rem; }
 }
