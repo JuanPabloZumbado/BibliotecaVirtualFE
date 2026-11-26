@@ -204,7 +204,7 @@
 
       el('section', { class: 'detalle-seccion' },
         el('h4', {}, 'Ediciones'),
-        seccionEdiciones(libro)),
+        seccionEdiciones(libro, enLista)),
 
       el('section', { class: 'detalle-seccion' },
         el('h4', {}, 'Mi lista por leer'),
@@ -217,7 +217,7 @@
     if (!$('libro-dialog').open) $('libro-dialog').showModal();
   }
 
-  function seccionEdiciones(libro) {
+  function seccionEdiciones(libro, enLista) {
     if (!libro.ediciones || !libro.ediciones.length) return el('p', { class: 'muted' }, 'Este libro no tiene ediciones registradas.');
     return el('div', { class: 'tabla-wrap' },
       el('table', { class: 'tabla' },
@@ -229,14 +229,24 @@
           el('td', { class: 'small' }, ed.isbn),
           el('td', {}, String(ed.totPaginas)),
           el('td', {}, anno(ed.annoPublicacion)),
-          el('td', {}, el('button', { class: 'btn secondary small', onclick: () => abrirIniciar(libro, ed) }, 'Leer')))))));
+          el('td', {}, el('button', { class: 'btn secondary small', onclick: () => abrirIniciar(libro, ed, enLista) }, 'Leer')))))));
   }
 
   function seccionPorLeer(libro, enLista) {
     if (enLista) {
-      return el('p', {}, 'Está en su lista con prioridad ',
-        el('span', { class: 'pill ' + enLista.prioridad.toLowerCase() }, enLista.prioridad),
-        el('span', { class: 'muted small' }, ` · agregado el ${fmtFecha(enLista.fechaAgregado)}`));
+      return el('div', { class: 'por-leer-form' },
+        el('span', {}, 'Está en su lista con prioridad ',
+          el('span', { class: 'pill ' + enLista.prioridad.toLowerCase() }, enLista.prioridad),
+          el('span', { class: 'muted small' }, ` · agregado el ${fmtFecha(enLista.fechaAgregado)}`)),
+        el('button', {
+          class: 'btn ghost small',
+          onclick: () => guard(async () => {
+            await Api.porLeer.remove(usuario.idUsuario, libro.idLibro);
+            toast(`"${libro.titulo}" se quitó de su lista por leer`);
+            await abrirLibro(libro.idLibro);
+            await refrescarPorLeer();
+          }),
+        }, 'Quitar de la lista'));
     }
     const select = el('select', { 'aria-label': 'Prioridad' },
       PRIORIDADES.map((p) => el('option', { value: p, selected: p === 'Media' ? 'selected' : null }, p)));
@@ -248,6 +258,7 @@
           await Api.porLeer.add(usuario.idUsuario, { idLibro: libro.idLibro, prioridad: select.value });
           toast(`"${libro.titulo}" se agregó a su lista por leer`);
           await abrirLibro(libro.idLibro);
+          await refrescarPorLeer();
         }),
       }, 'Agregar a por leer'));
   }
@@ -268,8 +279,8 @@
   // ---------- Iniciar lectura de una edición ----------
   let edicionAIniciar = null;
 
-  function abrirIniciar(libro, edicion) {
-    edicionAIniciar = { libro, edicion };
+  function abrirIniciar(libro, edicion, enLista) {
+    edicionAIniciar = { libro, edicion, enLista };
     $('iniciar-edicion').textContent =
       `${libro.titulo} · ${edicion.tipo}, ${edicion.editorial} (${edicion.totPaginas} páginas)`;
     $('iniciar-form').reset();
@@ -279,15 +290,20 @@
   $('iniciar-form').onsubmit = (e) => {
     e.preventDefault();
     guard(async () => {
-      const { libro, edicion } = edicionAIniciar;
+      const { libro, edicion, enLista } = edicionAIniciar;
       await Api.lecturas.create(usuario.idUsuario, {
         idEdicion: edicion.idEdicion,
         idFormato: Number($('il-formato').value),
         estado: $('il-estado').value,
       });
+      // Si el libro estaba en la lista por leer, ya no hace falta tenerlo ahí
+      if (enLista) await Api.porLeer.remove(usuario.idUsuario, libro.idLibro);
       $('iniciar-dialog').close();
       $('libro-dialog').close();
-      toast(`Lectura de "${libro.titulo}" iniciada. Puede verla en Mis lecturas.`);
+      toast(enLista
+        ? `Lectura de "${libro.titulo}" iniciada y quitada de su lista por leer.`
+        : `Lectura de "${libro.titulo}" iniciada. Puede verla en Mis lecturas.`);
+      await refrescarPorLeer();
     });
   };
 
@@ -420,7 +436,10 @@
 
   // ---------- Detalle de lectura ----------
   async function abrirLectura(idLectura) {
-    const l = await Api.lecturas.get(usuario.idUsuario, idLectura);
+    const [l, valoraciones] = await Promise.all([
+      Api.lecturas.get(usuario.idUsuario, idLectura),
+      Api.valoraciones.deLectura(idLectura),
+    ]);
     const sesiones = l.sesiones || [];
     const cont = $('lectura-detalle');
     cont.textContent = '';
@@ -446,6 +465,10 @@
         accionesLectura(l)),
 
       el('section', { class: 'detalle-seccion' },
+        el('h4', {}, 'Mi valoración'),
+        seccionValoracion(l, valoraciones[0] || null)),
+
+      el('section', { class: 'detalle-seccion' },
         el('h4', {}, 'Sesiones de lectura'),
         tablaSesiones(l, sesiones)));
 
@@ -464,7 +487,7 @@
       estaActiva(l) && el('button', { class: 'btn primary small', onclick: () => abrirSesion(l) }, 'Registrar sesión'),
       estaActiva(l) && el('button', {
         class: 'btn secondary small',
-        onclick: () => cambiarLectura(l, { estado: 'terminada' }, 'Lectura terminada'),
+        onclick: () => cambiarLectura(l, { estado: 'terminada' }, 'Lectura terminada. Ya puede valorarla.'),
       }, 'Marcar como terminada'),
       estaActiva(l) && el('button', {
         class: 'btn danger small',
@@ -572,6 +595,200 @@
       await refrescarLectura(l.idLectura);
     });
   };
+
+  // ---------- Por leer ----------
+  vistas.porleer = () => cargarPorLeer();
+
+  async function cargarPorLeer() {
+    const filtro = $('porleer-filtro').value;
+    // Lista completa para los contadores y, si hay filtro, la lista filtrada por el backend (?prioridad=)
+    const [todos, filtrados] = await Promise.all([
+      Api.porLeer.list(usuario.idUsuario),
+      filtro ? Api.porLeer.list(usuario.idUsuario, filtro) : null,
+    ]);
+
+    const contadores = $('porleer-contadores');
+    contadores.textContent = '';
+    PRIORIDADES.forEach((p) => {
+      const n = todos.filter((x) => x.prioridad === p).length;
+      if (n) contadores.append(el('span', { class: 'pill ' + p.toLowerCase() }, `${p}: ${n}`));
+    });
+
+    const libros = filtrados || todos;
+    const lista = $('porleer-lista');
+    lista.textContent = '';
+    if (!libros.length) {
+      lista.append(vacio(filtro
+        ? 'No tiene libros con esta prioridad.'
+        : 'Su lista por leer está vacía. En el catálogo, abra un libro y presione "Agregar a por leer".'));
+      return;
+    }
+    libros.forEach((p) => lista.append(el('div', { class: 'slot' }, tarjetaPorLeer(p))));
+  }
+
+  // Recarga la pestaña Por leer solo si está abierta
+  async function refrescarPorLeer() {
+    if (!$('tab-porleer').classList.contains('hidden')) await cargarPorLeer();
+  }
+
+  function tarjetaPorLeer(p) {
+    const prioridad = el('select', {
+      'aria-label': 'Cambiar prioridad',
+      onchange: (e) => guard(async () => {
+        await Api.porLeer.update(usuario.idUsuario, p.idLibro, { prioridad: e.target.value });
+        toast(`Prioridad de "${p.titulo}" cambiada a ${e.target.value}`);
+        await cargarPorLeer();
+      }),
+    }, PRIORIDADES.map((x) => el('option', { value: x, selected: x === p.prioridad ? 'selected' : null }, x)));
+
+    return el('article', { class: 'book prioridad-' + p.prioridad.toLowerCase() },
+      el('span', { class: 'pill ' + p.prioridad.toLowerCase() }, `Prioridad ${p.prioridad.toLowerCase()}`),
+      el('h4', {}, p.titulo),
+      p.nombreSaga && el('span', { class: 'saga-tag' }, `${p.nombreSaga} · #${p.ordenSaga}`),
+      el('span', { class: 'fechas' }, `Agregado el ${fmtFecha(p.fechaAgregado)}`),
+      el('label', { class: 'inline small' }, 'Prioridad:', prioridad),
+      el('div', { class: 'acciones' },
+        el('button', {
+          class: 'btn primary small',
+          title: 'Elegir la edición y empezar la lectura',
+          onclick: () => guard(() => abrirLibro(p.idLibro)),
+        }, 'Empezar a leer'),
+        el('button', { class: 'btn ghost small', onclick: () => quitarPorLeer(p) }, 'Quitar')));
+  }
+
+  function quitarPorLeer(p) {
+    if (!confirm(`¿Quitar "${p.titulo}" de su lista por leer?`)) return;
+    guard(async () => {
+      await Api.porLeer.remove(usuario.idUsuario, p.idLibro);
+      toast(`"${p.titulo}" se quitó de su lista por leer`);
+      await cargarPorLeer();
+    });
+  }
+
+  $('porleer-filtro').onchange = () => guard(cargarPorLeer);
+  $('porleer-nuevo').onclick = () => showTab('catalogo');
+
+  // ---------- Valoraciones ----------
+  // Solo se puede valorar una lectura terminada o abandonada, y una sola vez (lo valida el backend)
+  function seccionValoracion(l, valoracion) {
+    if (estaActiva(l)) {
+      return el('p', { class: 'muted', style: 'margin:0' },
+        'Podrá valorar este libro cuando termine o abandone la lectura.');
+    }
+    if (!valoracion) {
+      return el('div', { class: 'acciones-detalle' },
+        el('span', {}, '¿Qué le pareció este libro?'),
+        el('button', { class: 'btn gold small', onclick: () => abrirValoracion(l, null) }, 'Valorar lectura'));
+    }
+    return el('div', {},
+      el('div', { class: 'resena' },
+        el('span', { class: 'estrellas', title: `${valoracion.puntuacion} de 5` }, estrellas(valoracion.puntuacion)),
+        el('span', { class: 'quien' }, ` ${valoracion.puntuacion} de 5 · ${fmtFecha(valoracion.fecha)}`),
+        el('p', {}, valoracion.resenna)),
+      el('div', { class: 'acciones-detalle' },
+        el('button', { class: 'btn ghost small', onclick: () => abrirValoracion(l, valoracion) }, 'Editar'),
+        el('button', { class: 'btn danger small', onclick: () => eliminarValoracion(l, valoracion) }, 'Eliminar valoración')));
+  }
+
+  let valoracionActual = null;   // { lectura, valoracion } que se está creando o editando
+
+  function abrirValoracion(l, valoracion) {
+    valoracionActual = { lectura: l, valoracion };
+    $('valoracion-form').reset();
+    $('valoracion-titulo').textContent = valoracion ? 'Editar valoración' : 'Valorar lectura';
+    $('valoracion-libro').textContent = l.titulo;
+    if (valoracion) {
+      $('vf-p' + valoracion.puntuacion).checked = true;
+      $('vf-resena').value = valoracion.resenna;
+    }
+    actualizarContador();
+    $('valoracion-dialog').showModal();
+  }
+
+  function actualizarContador() {
+    $('vf-contador').textContent = `${$('vf-resena').value.length} / 2000`;
+  }
+  $('vf-resena').oninput = actualizarContador;
+
+  $('valoracion-form').onsubmit = (e) => {
+    e.preventDefault();
+    guard(async () => {
+      const { lectura, valoracion } = valoracionActual;
+      const datos = {
+        puntuacion: Number($('valoracion-form').elements.puntuacion.value),
+        resenna: $('vf-resena').value.trim(),
+      };
+      if (valoracion) await Api.valoraciones.update(valoracion.idValoracion, datos);
+      else await Api.valoraciones.create(lectura.idLectura, datos);
+      $('valoracion-dialog').close();
+      toast(valoracion ? 'Valoración actualizada' : `¡Gracias! Su valoración de "${lectura.titulo}" quedó guardada`);
+      await abrirLectura(lectura.idLectura);
+    });
+  };
+
+  function eliminarValoracion(l, valoracion) {
+    if (!confirm(`¿Eliminar su valoración de "${l.titulo}"?`)) return;
+    guard(async () => {
+      await Api.valoraciones.remove(valoracion.idValoracion);
+      toast('Valoración eliminada');
+      await abrirLectura(l.idLectura);
+    });
+  }
+
+  // ---------- Estadísticas ----------
+  vistas.estadisticas = async () => {
+    const e = await Api.usuarios.estadisticas(usuario.idUsuario);
+    const num = (n) => (n || 0).toLocaleString('es-CR');
+
+    const tile = (etiqueta, valor, detalle, clase = '') => el('div', { class: 'stat ' + clase },
+      el('span', { class: 'etiqueta' }, etiqueta),
+      el('span', { class: 'valor' }, valor),
+      detalle && el('span', { class: 'detalle' }, detalle));
+
+    const resumen = $('estadisticas-resumen');
+    resumen.textContent = '';
+    resumen.append(
+      tile('Lecturas', num(e.totalLecturas), `${num(e.librosTerminados)} ${e.librosTerminados === 1 ? 'libro terminado' : 'libros terminados'}`, 'acento-borgona'),
+      tile('Páginas leídas', num(e.paginasLeidas), `en ${num(e.totalSesiones)} ${e.totalSesiones === 1 ? 'sesión' : 'sesiones'}`, 'acento-verde'),
+      tile('Tiempo de lectura', fmtMinutos(e.minutosLeidos || 0),
+        e.paginasPorHora != null ? `${e.paginasPorHora.toFixed(1)} páginas por hora` : 'Sin sesiones registradas', 'acento-azul'),
+      tile('Mis reseñas', e.promedioPuntuacion != null ? e.promedioPuntuacion.toFixed(1) : '-',
+        e.totalValoraciones
+          ? el('span', {}, el('span', { class: 'estrellas' }, estrellas(Math.round(e.promedioPuntuacion))),
+            ` · ${e.totalValoraciones} ${e.totalValoraciones === 1 ? 'valoración' : 'valoraciones'}`)
+          : 'Todavía no ha valorado libros', 'acento-dorado'),
+      tile('Por leer', num(e.librosPorLeer), e.librosPorLeer === 1 ? 'libro en la lista' : 'libros en la lista', 'acento-terracota'));
+
+    const porEstado = ESTADOS.map((estado) => ({
+      nombre: ETIQUETA_ESTADO[estado],
+      cantidad: (e.lecturasPorEstado || {})[estado] || 0,
+      clase: 'estado-' + claseEstado(estado),
+    }));
+
+    const paneles = $('estadisticas-paneles');
+    paneles.textContent = '';
+    paneles.append(
+      panelBarras('Lecturas por estado', 'Cantidad de lecturas', porEstado),
+      panelBarras('Géneros más leídos', 'Lecturas por género',
+        (e.generosMasLeidos || []).map((g) => ({ ...g, clase: lomo(g.id) }))),
+      panelBarras('Autores más leídos', 'Lecturas por autor', e.autoresMasLeidos || []),
+      panelBarras('Formatos usados', 'Lecturas por formato', e.formatosUsados || []));
+  };
+
+  // Gráfico de barras horizontales hecho con CSS: el ancho de cada barra es proporcional al mayor valor
+  function panelBarras(titulo, subtitulo, items) {
+    const max = Math.max(1, ...items.map((i) => i.cantidad));
+    return el('section', { class: 'card panel-barras' },
+      el('h3', {}, titulo),
+      el('p', { class: 'muted small' }, subtitulo),
+      items.some((i) => i.cantidad)
+        ? el('ul', { class: 'barras' }, items.map((i) => el('li', { title: `${i.nombre}: ${i.cantidad}` },
+          el('span', { class: 'nombre' }, i.nombre),
+          el('span', { class: 'pista ' + (i.clase || '') },
+            el('span', { class: 'relleno', style: `width:${(i.cantidad * 100) / max}%` })),
+          el('span', { class: 'cantidad' }, String(i.cantidad)))))
+        : el('p', { class: 'muted' }, 'Todavía no hay datos.'));
+  }
 
   // ---------- Perfil ----------
   $('perfil-btn').onclick = () => {

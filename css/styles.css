@@ -421,6 +421,61 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .acciones-detalle select { width: auto; }
 .campos-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 
+/* ---------- Por leer ---------- */
+/* El lomo toma el color de la prioridad (igual que su etiqueta) */
+.prioridad-alta { --lomo: var(--terracota); }
+.prioridad-media { --lomo: var(--dorado); }
+.prioridad-baja { --lomo: var(--azul-tinta); }
+.book label.inline { font-weight: 600; font-size: .8rem; margin-top: 4px; }
+.book label.inline select { padding: 4px 8px; font-size: .85rem; }
+
+/* ---------- Valoraciones ---------- */
+/* Estrellas seleccionables: los radios van de 5 a 1 y se muestran al revés (row-reverse),
+   así "input:checked ~ label" pinta la estrella elegida y las de menor valor */
+.selector-estrellas {
+  border: 0; padding: 0; margin: 8px 0 0;
+  display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px;
+}
+.selector-estrellas legend { font-size: .85rem; font-weight: 700; color: var(--madera-oscura); margin-bottom: 4px; padding: 0; }
+.selector-estrellas input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.selector-estrellas label { margin: 0; font-size: 2rem; line-height: 1; color: var(--borde); cursor: pointer; transition: color .1s; }
+.selector-estrellas input:checked ~ label,
+.selector-estrellas label:hover,
+.selector-estrellas label:hover ~ label { color: #C9922E; }
+.selector-estrellas input:focus-visible + label { outline: 2px solid var(--azul-tinta); border-radius: 4px; }
+textarea { resize: vertical; font: inherit; }
+.contador { text-align: right; margin: 4px 0 0; }
+
+/* ---------- Estadísticas ---------- */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.stat {
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-top: 5px solid var(--acento, var(--madera));
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--sombra);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.stat .etiqueta { font-size: .75rem; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+.stat .valor { font-family: var(--font-titulo); font-size: 2rem; font-weight: 700; color: var(--tinta); line-height: 1.15; }
+.stat .detalle { font-size: .85rem; color: var(--tinta-suave); }
+.acento-borgona { --acento: var(--borgona); }
+.acento-verde { --acento: var(--verde); }
+.acento-azul { --acento: var(--azul-tinta); }
+.acento-dorado { --acento: var(--dorado); }
+.acento-terracota { --acento: var(--terracota); }
+
+.stats-paneles { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.panel-barras h3 { margin: 0; font-family: var(--font-titulo); color: var(--borgona); font-size: 1.15rem; }
+.panel-barras > p { margin: 2px 0 12px; }
+.barras { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.barras li { display: grid; grid-template-columns: minmax(90px, 38%) 1fr 2.5em; align-items: center; gap: 10px; }
+.barras .nombre { font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barras .pista { height: 12px; background: #EDE2C8; border-radius: 4px; overflow: hidden; }
+.barras .relleno { display: block; height: 100%; background: var(--lomo, var(--madera)); border-radius: 0 4px 4px 0; }
+.barras .cantidad { font-weight: 700; text-align: right; color: var(--madera-oscura); }
+
 /* ---------- Diálogos ---------- */
 dialog {
   border: 1px solid var(--borde);

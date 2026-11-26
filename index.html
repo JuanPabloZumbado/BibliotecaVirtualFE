@@ -116,16 +116,29 @@
     <div id="tab-porleer" class="tab-panel hidden">
       <div class="toolbar">
         <h2>Por leer</h2>
+        <div id="porleer-contadores" class="chips"></div>
+        <span class="spacer"></span>
+        <label class="inline">Prioridad:
+          <select id="porleer-filtro">
+            <option value="">Todas</option>
+            <option value="Alta">Alta</option>
+            <option value="Media">Media</option>
+            <option value="Baja">Baja</option>
+          </select>
+        </label>
+        <button id="porleer-nuevo" class="btn secondary">Buscar un libro</button>
       </div>
-      <div id="porleer-contenido" class="empty">La lista por leer se agrega en una próxima etapa.</div>
+      <div id="porleer-lista" class="shelf"></div>
     </div>
 
     <!-- Estadísticas -->
     <div id="tab-estadisticas" class="tab-panel hidden">
       <div class="toolbar">
         <h2>Estadísticas</h2>
+        <span class="muted">Resumen de toda su actividad de lectura</span>
       </div>
-      <div id="estadisticas-contenido" class="empty">Las estadísticas se agregan en una próxima etapa.</div>
+      <div id="estadisticas-resumen" class="stats-grid"></div>
+      <div id="estadisticas-paneles" class="stats-paneles"></div>
     </div>
   </main>
 </section>
@@ -210,6 +223,30 @@
     <div class="actions">
       <button type="button" class="btn ghost" data-close>Cancelar</button>
       <button type="submit" class="btn primary">Guardar sesión</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diálogo: valorar una lectura (crear o editar) -->
+<dialog id="valoracion-dialog">
+  <form id="valoracion-form" method="dialog">
+    <h3 id="valoracion-titulo">Valorar lectura</h3>
+    <p class="muted small" id="valoracion-libro"></p>
+    <fieldset class="selector-estrellas">
+      <legend>Puntuación</legend>
+      <!-- En orden inverso: con flex row-reverse se ven de 1 a 5 y CSS puede pintar las anteriores -->
+      <input type="radio" name="puntuacion" id="vf-p5" value="5" required><label for="vf-p5" title="5 de 5">★</label>
+      <input type="radio" name="puntuacion" id="vf-p4" value="4"><label for="vf-p4" title="4 de 5">★</label>
+      <input type="radio" name="puntuacion" id="vf-p3" value="3"><label for="vf-p3" title="3 de 5">★</label>
+      <input type="radio" name="puntuacion" id="vf-p2" value="2"><label for="vf-p2" title="2 de 5">★</label>
+      <input type="radio" name="puntuacion" id="vf-p1" value="1"><label for="vf-p1" title="1 de 5">★</label>
+    </fieldset>
+    <label for="vf-resena">Reseña</label>
+    <textarea id="vf-resena" rows="5" maxlength="2000" required placeholder="¿Qué le pareció el libro?"></textarea>
+    <p class="muted small contador" id="vf-contador">0 / 2000</p>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close>Cancelar</button>
+      <button type="submit" class="btn gold">Guardar valoración</button>
     </div>
   </form>
 </dialog>
