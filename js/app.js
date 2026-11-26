@@ -90,10 +90,28 @@
   // Cada etapa registra aquí la función que carga su pestaña: vistas.catalogo = async () => {...}
   const vistas = {};
 
-  function showTab(nombre) {
+  async function showTab(nombre) {
     document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === nombre));
     document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('hidden', p.id !== 'tab-' + nombre));
-    if (vistas[nombre]) guard(vistas[nombre]);
+    if (!vistas[nombre]) return;
+
+    const panel = $('tab-' + nombre);
+    const avisoPrevio = panel.querySelector('.aviso-error');
+    if (avisoPrevio) avisoPrevio.remove();
+    // Mientras carga, el panel se atenúa (ver .cargando en styles.css)
+    panel.classList.add('cargando');
+    try {
+      await vistas[nombre]();
+    } catch (e) {
+      toast(e.message, true);
+      panel.querySelectorAll('.cargando-msg').forEach((m) => m.remove());
+      panel.append(el('div', { class: 'aviso-error' },
+        el('strong', {}, 'No se pudo cargar esta sección.'),
+        el('span', {}, e.message),
+        el('button', { class: 'btn primary small', onclick: () => showTab(nombre) }, 'Reintentar')));
+    } finally {
+      panel.classList.remove('cargando');
+    }
   }
   document.querySelectorAll('.tab').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 
@@ -171,10 +189,23 @@
     clearTimeout(esperaBusqueda);
     esperaBusqueda = setTimeout(() => guard(buscarLibros), 300);
   };
-  ['f-genero', 'f-autor', 'f-saga'].forEach((id) => ($(id).onchange = () => guard(buscarLibros)));
+  const FILTROS = ['f-genero', 'f-autor', 'f-saga'];
+  FILTROS.forEach((id) => ($(id).onchange = () => { contarFiltros(); guard(buscarLibros); }));
   $('f-limpiar').onclick = () => {
     $('filtros').reset();
+    contarFiltros();
     guard(buscarLibros);
+  };
+
+  // En celular los filtros se ocultan para dejar más espacio al estante.
+  // El botón indica cuántos filtros hay activos, aunque estén ocultos.
+  function contarFiltros() {
+    const activos = FILTROS.filter((id) => $(id).value).length;
+    $('f-toggle').textContent = activos ? `Filtros (${activos})` : 'Filtros';
+  }
+  $('f-toggle').onclick = () => {
+    const abierto = $('filtros').classList.toggle('abierto');
+    $('f-toggle').setAttribute('aria-expanded', String(abierto));
   };
 
   // ---------- Detalle de libro ----------
@@ -653,7 +684,12 @@
           title: 'Elegir la edición y empezar la lectura',
           onclick: () => guard(() => abrirLibro(p.idLibro)),
         }, 'Empezar a leer'),
-        el('button', { class: 'btn ghost small', onclick: () => quitarPorLeer(p) }, 'Quitar')));
+        el('button', {
+          class: 'btn ghost small quitar',
+          title: 'Quitar de la lista',
+          'aria-label': `Quitar "${p.titulo}" de la lista`,
+          onclick: () => quitarPorLeer(p),
+        }, '✕')));
   }
 
   function quitarPorLeer(p) {
